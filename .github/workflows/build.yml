@@ -313,3 +313,9 @@ jobs:
       - name: fuzz
         if: ${{ matrix.fuzz }}
         run: ./fuzzers_test.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dropbear-binaries
+          path: dropbear
