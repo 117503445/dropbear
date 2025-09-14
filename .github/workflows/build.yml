@@ -41,6 +41,7 @@ jobs:
           - name: server only
             runcheck: 'no'
             make_target: PROGRAMS=dropbear
+            configure_flags: --enable-static
 
           - name: bundled libtom, 22.04, no writev()
             # test can use an older distro with bundled libtommath
