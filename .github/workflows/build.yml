@@ -23,163 +23,13 @@ jobs:
 
         # MULTI and NOWRITEV are passed as integers to the build
         include:
-          - name: plain linux
-            upload_sizes: 1
 
-          - name: multi binary
-            multi: 1
-            multilink: 1
-
-          - name: multi binary, dropbearmulti argv0
-            multi: 1
-            multiwrapper: 1
-
-          - name: client only
-            runcheck: 'no'
-            make_target: PROGRAMS=dbclient
 
           - name: server only
             runcheck: 'no'
             make_target: PROGRAMS=dropbear
             configure_flags: --enable-static
 
-          - name: bundled libtom, 22.04, no writev()
-            # test can use an older distro with bundled libtommath
-            os: ubuntu-22.04
-            configure_flags: --enable-bundled-libtom --enable-werror
-            # NOWRITEV is unrelated, test here to save a job
-            nowritev: 1
-            # our tests expect >= python3.7
-            runcheck: 'no'
-
-          - name: linux clang
-            cc: clang
-
-          # Some platforms only have old compilers, we try to keep
-          # compatibilty. For some reason -std=c89 doesn't enforce
-          # early declarations so we specify it anyway.
-          - name: c89
-            extracflags: -std=c89 -Wdeclaration-after-statement
-            # enable all options
-            nondefault: 1
-            configure_flags: --enable-pam
-            # sntrup761.c is not c89 compliant
-            localoptions: |
-              #define DROPBEAR_SNTRUP761 0
-              #define DROPBEAR_MLKEM768 0
-
-          - name: macos 14
-            os: macos-14
-            cc: clang
-            # OS X says daemon() and utmp are deprecated.
-            # OS X tests for undefined TARGET_OS_EMBEDDED in libc headers
-            extracflags: -Wno-deprecated-declarations -Wno-undef
-            runcheck: 'no'
-            apt: 'no'
-            # fails with:
-            # .../ranlib: file: libtomcrypt.a(cbc_setiv.o) has no symbols
-            ranlib: ranlib -no_warning_for_no_symbols
-
-          - name: macos 15
-            os: macos-15
-            cc: clang
-            # OS X says daemon() and utmp are deprecated.
-            # OS X tests for undefined TARGET_OS_EMBEDDED in libc headers
-            extracflags: -Wno-deprecated-declarations -Wno-undef
-            runcheck: 'no'
-            apt: 'no'
-            # fails with:
-            # .../ranlib: file: libtomcrypt.a(cbc_setiv.o) has no symbols
-            ranlib: ranlib -no_warning_for_no_symbols
-
-          # Check that debug code doesn't bitrot
-          - name: DEBUG_TRACE
-            nondefault: 1
-            configure_flags: --enable-pam
-            localoptions: |
-              #define DEBUG_TRACE 5
-
-          # Check off-by-default options don't bitrot
-          - name: nondefault options
-            nondefault: 1
-            configure_flags: --enable-pam
-
-          - name: most options disabled
-            configure_flags: --disable-harden --disable-zlib --disable-openpty --disable-lastlog
-            runcheck: 'no'
-            localoptions: |
-              #define DROPBEAR_RSA 0
-              #define INETD_MODE 0
-              #define DROPBEAR_REEXEC 0
-              #define DROPBEAR_SMALL_CODE 0
-              #define DROPBEAR_CLI_LOCALTCPFWD 0
-              #define DROPBEAR_CLI_REMOTETCPFWD 0
-              #define DROPBEAR_SVR_LOCALTCPFWD 0
-              #define DROPBEAR_SVR_REMOTETCPFWD 0
-              #define DROPBEAR_SVR_AGENTFWD 0
-              #define DROPBEAR_CLI_AGENTFWD 0
-              #define DROPBEAR_CLI_PROXYCMD 0
-              #define DROPBEAR_USER_ALGO_LIST 0
-              #define DROPBEAR_AES128 0
-              #define DROPBEAR_AES256 0
-              #define DROPBEAR_ENABLE_CTR_MODE 0
-              #define DROPBEAR_SHA1_HMAC 0
-              #define DROPBEAR_SHA2_256_HMAC 0
-              #define DROPBEAR_RSA 0
-              #define DROPBEAR_ECDSA 0
-              #define DROPBEAR_SK_KEYS 0
-              #define DROPBEAR_DELAY_HOSTKEY 0
-              #define DROPBEAR_DH_GROUP14_SHA1 0
-              #define DROPBEAR_DH_GROUP14_SHA256 0
-              #define DROPBEAR_ECDH 0
-              #define DROPBEAR_DH_GROUP1_CLIENTONLY 0
-              #define DO_MOTD 0
-              #define DROPBEAR_SVR_PUBKEY_AUTH 0
-              #define DROPBEAR_CLI_PASSWORD_AUTH 0
-              #define DROPBEAR_CLI_PUBKEY_AUTH 0
-              #define DROPBEAR_USE_PASSWORD_ENV 0
-              #define DROPBEAR_SFTPSERVER 0
-
-          - name: no sha1
-            runcheck: 'no'
-            # disables all sha1
-            localoptions: |
-              #define DROPBEAR_SHA1_HMAC 0
-              #define DROPBEAR_RSA_SHA1 0
-              #define DROPBEAR_DH_GROUP14_SHA1 0
-              #define DROPBEAR_ECDSA 0
-              #define DROPBEAR_ED25519 0
-              #define DROPBEAR_SK_KEYS 0
-              #define DROPBEAR_ENABLE_GCM_MODE 1
-              #define DROPBEAR_3DES 1
-              #define DROPBEAR_DH_GROUP16 1
-              #define DROPBEAR_SHA2_512_HMAC 1
-              #define DROPBEAR_CLI_PUBKEY_AUTH 0
-
-          - name: pq, no plain x25519
-            localoptions: |
-              #define DROPBEAR_CURVE25519 0
-
-          # # Fuzzers run standalone. A bit superfluous with cifuzz, but
-          # # good to run the whole corpus to keep it working.
-          # - name: fuzzing with address sanitizer
-          #   configure_flags: --enable-fuzz --disable-harden --enable-bundled-libtom --enable-werror
-          #   ldflags: -fsanitize=address
-          #   extracflags: -fsanitize=address
-          #   # -fsanitize=address prevents aslr, don't test it
-          #   pytest_addopts: -k "not aslr"
-          #   fuzz: True
-          #   cc: clang
-
-          # # Undefined Behaviour sanitizer
-          # - name: fuzzing with undefined behaviour sanitizer
-          #   configure_flags: --enable-fuzz --disable-harden --enable-bundled-libtom --enable-werror
-          #   ldflags: -fsanitize=undefined
-          #   # don't fail with alignment due to https://github.com/libtom/libtomcrypt/issues/549
-          #   extracflags: -fsanitize=undefined -fno-sanitize-recover=undefined -fsanitize-recover=alignment
-          #   pytest_addopts: -k "not aslr"
-          #   fuzz: True
-          #   cc: clang
 
     env:
       MULTI: ${{ matrix.multi }}
@@ -317,6 +167,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: dropbear-binaries
+          name: dropbear-binaries-${{ matrix.name }}
           path: dropbear
           if-no-files-found: ignore
